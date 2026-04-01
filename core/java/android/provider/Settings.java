@@ -12951,6 +12951,24 @@ public final class Settings {
         public static final String MINIMAX_API_KEY = "minimax_api_key";
 
         /**
+         * Whether the AI Agent voice wakeup is enabled.
+         * <p>
+         * Type: int (0 = disabled, 1 = enabled)
+         * @hide
+         */
+        @Readable
+        public static final String AGENT_VOICE_WAKEUP_ENABLED = "agent_voice_wakeup_enabled";
+
+        /**
+         * The hotword for AI Agent voice wakeup.
+         * <p>
+         * Type: String
+         * @hide
+         */
+        @Readable
+        public static final String AGENT_HOTWORD = "agent_hotword";
+
+        /**
          * Whether guest user should be removed on exit from guest mode.
          * <p>
          * Type: int

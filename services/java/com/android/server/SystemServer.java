@@ -116,6 +116,7 @@ import com.android.internal.widget.ILockSettings;
 import com.android.internal.widget.LockSettingsInternal;
 import com.android.server.accessibility.AccessibilityManagerService;
 import com.android.server.accounts.AccountManagerService;
+import com.android.server.ai.AgentService;
 import com.android.server.adaptiveauth.AdaptiveAuthService;
 import com.android.server.adb.AdbService;
 import com.android.server.alarm.AlarmManagerService;
@@ -2442,6 +2443,10 @@ public final class SystemServer implements Dumpable {
             // based on that feature.
             t.traceBegin("StartVoiceRecognitionManager");
             mSystemServiceManager.startService(VoiceInteractionManagerService.class);
+            t.traceEnd();
+
+            t.traceBegin("StartAgentService");
+            mSystemServiceManager.startService(AgentService.class);
             t.traceEnd();
 
             if (GestureLauncherService.isGestureLauncherEnabled(context.getResources())) {
