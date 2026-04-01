@@ -12933,6 +12933,24 @@ public final class Settings {
         public static final String ADD_USERS_WHEN_LOCKED = "add_users_when_locked";
 
         /**
+         * Whether the AI Agent service is enabled.
+         * <p>
+         * Type: int (0 = disabled, 1 = enabled)
+         * @hide
+         */
+        @Readable
+        public static final String AGENT_SERVICE_ENABLED = "agent_service_enabled";
+
+        /**
+         * The API key for MiniMax AI service.
+         * <p>
+         * Type: String
+         * @hide
+         */
+        @Readable
+        public static final String MINIMAX_API_KEY = "minimax_api_key";
+
+        /**
          * Whether guest user should be removed on exit from guest mode.
          * <p>
          * Type: int
