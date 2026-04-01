@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Home 启动链路（补到客户端）</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --card: #ffffff;
+      --ink: #19251e;
+      --muted: #5b6a61;
+      --line: #dbe2da;
+      --accent: #0f6f56;
+      --accent-2: #e4f2ea;
+      --code-bg: #f3f6f2;
+      --shadow: 0 10px 30px rgba(24, 38, 29, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0%, #d8ece2 0%, transparent 36%),
+        radial-gradient(circle at 92% 10%, #e2efe6 0%, transparent 30%),
+        var(--bg);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 22px 16px 54px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0f6f56 0%, #1a5f66 100%);
+      color: #f8fffb;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.2;
+    }
+
+    .sub {
+      margin: 0;
+      color: #dbf7ea;
+      font-size: 14px;
+    }
+
+    .note {
+      margin-top: 10px;
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      color: #164b38;
+    }
+
+    p, li {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+
+    .flow {
+      font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 12px;
+      background: var(--accent-2);
+      border: 1px solid #cde2d7;
+      border-radius: 8px;
+      padding: 10px;
+      color: #1b4f3b;
+      white-space: pre-wrap;
+    }
+
+    .code {
+      margin-top: 8px;
+      font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      background: var(--code-bg);
+      border: 1px solid #d9e3d7;
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: #1f4334;
+      overflow: auto;
+      white-space: pre;
+    }
+
+    .tip {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .diagram-wrap {
+      margin-top: 8px;
+      border: 1px solid #d8e4da;
+      border-radius: 10px;
+      background: #f7fcf8;
+      overflow: auto;
+      padding: 8px;
+    }
+
+    .diagram-svg {
+      width: 100%;
+      min-width: 980px;
+      height: auto;
+      display: block;
+      font-family: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", sans-serif;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--accent);
+    }
+
+    a:hover { opacity: 0.86; }
+
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 980px) {
+      .cols {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>AMS / ATMS Home 启动链路（补到客户端）</h1>
+      <p class="sub">从 SystemServer 一直跟到 ActivityThread.performLaunchActivity / onCreate</p>
+      <div class="note">完整 Markdown 版：<a href="./home-start-flow.md">home-start-flow.md</a></div>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <h2>核心结论</h2>
+        <ul>
+          <li>`startHomeOnTaskDisplayArea(...)` 出现两次，通常不是死循环，而是两个入口复用。</li>
+          <li>入口 A：`systemReady` 主动拉起 Home。</li>
+          <li>入口 B：`resume` 阶段兜底（`no-focusable-task` / `noMoreActivities`）。</li>
+          <li>“到底”的后半段是 `startSpecificActivity -> realStartActivityLocked -> ClientTransaction -> ActivityThread`。</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>完整压缩链路</h2>
+        <div class="flow">SystemServer.startOtherServices
+-> AMS.systemReady
+-> mAtmInternal.startHomeOnAllDisplays("systemReady")
+-> RootWindowContainer.startHomeOnTaskDisplayArea
+-> ActivityStartController.startHomeActivity
+-> ActivityStarter.execute -> executeRequest -> startActivityUnchecked -> startActivityInner
+-> resumeFocusedTasksTopActivities
+-> Task/TaskFragment.resumeTopActivity
+-> startSpecificActivity (if process not attached)
+-> realStartActivityLocked (LaunchActivityItem + ResumeActivityItem)
+-> ClientLifecycleManager.scheduleTransaction
+-> IApplicationThread.scheduleTransaction
+-> ActivityThread.H.EXECUTE_TRANSACTION
+-> LaunchActivityItem.execute
+-> ActivityThread.handleLaunchActivity
+-> performLaunchActivity
+-> Instrumentation.callActivityOnCreate</div>
+      </section>
+
+      <div class="cols">
+        <section class="card">
+          <h2>代码 1：SystemServer / AMS 入口</h2>
+          <div class="code">SystemServer.java:949-951
+949  startBootstrapServices(t);
+950  startCoreServices(t);
+951  startOtherServices(t);
+
+SystemServer.java:3120
+3120 mActivityManagerService.systemReady(() -> {
+
+ActivityManagerService.java:9004,9066,9098
+9004 if (goingCallback != null) goingCallback.run();
+9066 mAtmInternal.startHomeOnAllDisplays(currentUserId, "systemReady");
+9098 mAtmInternal.resumeTopActivities(false /* scheduleIdle */);</div>
+          <p class="tip">注释：`9066` 是主动拉起 Home；`9098` 会触发后续 resume 链路。</p>
+        </section>
+
+        <section class="card">
+          <h2>代码 2：RootWindowContainer 下钻</h2>
+          <div class="code">RootWindowContainer.java:1396-1401
+1396 boolean startHomeOnAllDisplays(int userId, String reason) {
+1398   for (int i = getChildCount() - 1; i >= 0; i--) {
+1400     homeStarted |= startHomeOnDisplay(userId, reason, displayId);
+     }
+}
+
+RootWindowContainer.java:1492-1495
+1492 final String myReason = reason + ":" + userId + ":" + ...;
+1494 mService.getActivityStartController().startHomeActivity(homeIntent, aInfo, myReason,
+1495         taskDisplayArea);</div>
+          <p class="tip">注释：调试时一定看 `reason/myReason`，这是区分入口的关键。</p>
+        </section>
+      </div>
+
+      <div class="cols">
+        <section class="card">
+          <h2>代码 3：startHomeActivity -> startActivityUnchecked</h2>
+          <div class="code">ActivityStartController.java:189-194
+189 mLastHomeActivityStartResult = obtainStarter(intent, "startHomeActivity: " + reason)
+190         .setOutActivity(tmpOutRecord)
+191         .setCallingUid(0)
+192         .setActivityInfo(aInfo)
+193         .setActivityOptions(options.toBundle())
+194         .execute();
+
+ActivityStarter.java:1398-1401
+1398 mLastStartActivityResult = startActivityUnchecked(r, sourceRecord, voiceSession,
+1399         request.voiceInteractor, startFlags, checkedOptions,
+1400         inTask, inTaskFragment, balVerdict, intentGrants, realCallingUid, transition,
+1401         isIndependent);</div>
+          <p class="tip">注释：你提到的那行就在这里，Home 也是标准 Starter 流程。</p>
+        </section>
+
+        <section class="card">
+          <h2>代码 4：transition.collect 与 startActivityInner</h2>
+          <div class="code">ActivityStarter.java:1559-1578
+1559 // Create a display snapshot as soon as possible.
+1560 if (isIndependentLaunch && mRequest.freezeScreen) {
+1567   transition.collect(dc);
+1568   transition.collectVisibleChange(dc);
+}
+1575 Trace.traceBegin(..., "startActivityInner");
+1576 result = startActivityInner(r, sourceRecord, ...);</div>
+          <p class="tip">注释：`collect()` 不是只截图，而是 Transition 收集参与对象/可见性变化。</p>
+        </section>
+      </div>
+
+      <div class="cols">
+        <section class="card">
+          <h2>代码 5：resume 兜底再次回 Home</h2>
+          <div class="code">RootWindowContainer.java:2543-2554
+2543 if (!resumedOnDisplay[0]) {
+2548   final Task focusedRoot = display.getFocusedRootTask();
+2552 } else if (targetRootTask == null) {
+2553   result |= resumeHomeActivity(null /* prev */, "no-focusable-task",
+2554           display.getDefaultTaskDisplayArea());
+}
+
+RootWindowContainer.java:1645-1651
+1645 if (r != null && !r.finishing) {
+1647   return resumeFocusedTasksTopActivities(r.getRootTask(), prev);
+}
+1650 return startHomeOnTaskDisplayArea(userId, myReason, taskDisplayArea, ...);</div>
+          <p class="tip">注释：这就是你看到 `startHomeOnTaskDisplayArea` “第二次出现”的原因。</p>
+        </section>
+
+        <section class="card">
+          <h2>代码 6：Task/TaskFragment 到 startSpecificActivity</h2>
+          <div class="code">Task.java:5148-5149
+5148 final TaskFragment topFragment = topActivity.getTaskFragment();
+5149 resumed[0] = topFragment.resumeTopActivity(prev, options, deferPause);
+
+TaskFragment.java:1549,1664,1680
+1549 if (next.attachedToProcess()) {
+...
+1664   mTaskSupervisor.startSpecificActivity(next, true, false);
+...
+1680   mTaskSupervisor.startSpecificActivity(next, true, true);</div>
+          <p class="tip">注释：进程已附着就直接 ResumeItem；没附着就走 `startSpecificActivity`。</p>
+        </section>
+      </div>
+
+      <div class="cols">
+        <section class="card">
+          <h2>代码 7：realStartActivityLocked 下发事务</h2>
+          <div class="code">ActivityTaskSupervisor.java:938-971
+938  final LaunchActivityItem launchActivityItem = new LaunchActivityItem(...);
+950  if (andResume) {
+951      lifecycleItem = new ResumeActivityItem(...);
+}
+967  mService.getLifecycleManager().scheduleTransactionAndLifecycleItems(
+968          proc.getThread(), launchActivityItem, lifecycleItem,
+971          true /* shouldDispatchImmediately */);</div>
+          <p class="tip">注释：这里是服务端最后一跳，准备把 Launch/Resume 打包给客户端。</p>
+        </section>
+
+        <section class="card">
+          <h2>代码 8：Binder 到 ActivityThread</h2>
+          <div class="code">ClientTransaction.java:240-242
+240 public void schedule() throws RemoteException {
+241     mClient.scheduleTransaction(this);
+}
+
+ClientTransactionHandler.java:55-58
+55 void scheduleTransaction(ClientTransaction transaction) {
+56   transaction.preExecute(this);
+57   sendMessage(ActivityThread.H.EXECUTE_TRANSACTION, transaction);
+}
+
+ActivityThread.java:2713-2719
+2713 case EXECUTE_TRANSACTION:
+2719   mTransactionExecutor.execute(transaction);</div>
+          <p class="tip">注释：客户端主线程拿到事务后进入 TransactionExecutor。</p>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>代码 9：真正创建 Activity（到底）</h2>
+        <div class="code">LaunchActivityItem.java:214-223
+214 public void execute(...) {
+222   client.handleLaunchActivity(r, pendingActions, mDeviceId, null /* customIntent */);
+}
+
+ActivityThread.java:4316
+4316 final Activity a = performLaunchActivity(r, customIntent);
+
+ActivityThread.java:4022,4080,4109-4111
+4022 activity = mInstrumentation.newActivity(cl, component.getClassName(), r.intent);
+4080 activity.attach(activityBaseContext, this, getInstrumentation(), r.token, ...);
+4109 mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
+4111 mInstrumentation.callActivityOnCreate(activity, r.state);
+
+ActivityThread.java:5414,5423
+5414 public void handleResumeActivity(...)
+5423 if (!performResumeActivity(r, finalStateRequest, reason)) return;</div>
+        <p class="tip">注释：这部分就是你要的“链路到底”：已经到 app 进程 `onCreate/onResume`。</p>
+      </section>
+
+      <section class="card">
+        <h2>图：进程创建 + Socket + Binder 回流</h2>
+        <div class="diagram-wrap">
+          <svg class="diagram-svg" viewBox="0 0 1200 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="进程创建与通信链路图">
+            <defs>
+              <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                <polygon points="0 0, 9 3.5, 0 7" fill="#2f6f57"/>
+              </marker>
+            </defs>
+
+            <rect x="30" y="35" width="320" height="170" rx="12" fill="#ffffff" stroke="#cfe0d4"/>
+            <text x="48" y="64" font-size="17" fill="#184a37" font-weight="700">system_server (ATMS/AMS/ProcessList)</text>
+            <text x="48" y="92" font-size="13" fill="#2a5f47">1) startProcessAsync / startProcessLocked</text>
+            <text x="48" y="114" font-size="13" fill="#2a5f47">2) Process.start(...)</text>
+            <text x="48" y="136" font-size="13" fill="#2a5f47">3) 后续 attachApplication 回收启动请求</text>
+            <text x="48" y="158" font-size="13" fill="#2a5f47">4) realStartActivityLocked 下发 Launch/Resume</text>
+
+            <rect x="420" y="35" width="320" height="170" rx="12" fill="#ffffff" stroke="#cfe0d4"/>
+            <text x="438" y="64" font-size="17" fill="#184a37" font-weight="700">android.os.Process / ZygoteProcess</text>
+            <text x="438" y="92" font-size="13" fill="#2a5f47">5) openZygoteSocketIfNeeded(abi)</text>
+            <text x="438" y="114" font-size="13" fill="#2a5f47">6) LocalSocket 写入: argc + args</text>
+            <text x="438" y="136" font-size="13" fill="#2a5f47">7) 读回: pid + usingWrapper</text>
+
+            <rect x="810" y="35" width="360" height="210" rx="12" fill="#ffffff" stroke="#cfe0d4"/>
+            <text x="828" y="64" font-size="17" fill="#184a37" font-weight="700">zygote (ZygoteServer / ZygoteConnection)</text>
+            <text x="828" y="92" font-size="13" fill="#2a5f47">8) runSelectLoop poll socket</text>
+            <text x="828" y="114" font-size="13" fill="#2a5f47">9) acceptCommandPeer + processCommand</text>
+            <text x="828" y="136" font-size="13" fill="#2a5f47">10) fork child / zygoteInit</text>
+            <text x="828" y="158" font-size="13" fill="#2a5f47">11) socket 回写 pid + usingWrapper</text>
+
+            <rect x="810" y="325" width="360" height="190" rx="12" fill="#ffffff" stroke="#cfe0d4"/>
+            <text x="828" y="354" font-size="17" fill="#184a37" font-weight="700">app process (ActivityThread)</text>
+            <text x="828" y="382" font-size="13" fill="#2a5f47">12) ActivityThread.main -> attach(false, startSeq)</text>
+            <text x="828" y="404" font-size="13" fill="#2a5f47">13) Binder: attachApplication(mAppThread, startSeq)</text>
+            <text x="828" y="426" font-size="13" fill="#2a5f47">14) EXECUTE_TRANSACTION -> handleLaunchActivity</text>
+            <text x="828" y="448" font-size="13" fill="#2a5f47">15) performLaunchActivity -> onCreate/onResume</text>
+
+            <rect x="420" y="325" width="320" height="190" rx="12" fill="#ffffff" stroke="#cfe0d4"/>
+            <text x="438" y="354" font-size="17" fill="#184a37" font-weight="700">ATMS/RootWindowContainer</text>
+            <text x="438" y="382" font-size="13" fill="#2a5f47">16) mAtmInternal.attachApplication(...)</text>
+            <text x="438" y="404" font-size="13" fill="#2a5f47">17) attachApplication() 消费 mStartingProcessActivities</text>
+            <text x="438" y="426" font-size="13" fill="#2a5f47">18) realStartActivityLocked(...)</text>
+
+            <line x1="350" y1="118" x2="420" y2="118" stroke="#2f6f57" stroke-width="2.3" marker-end="url(#arrow)"/>
+            <text x="356" y="104" font-size="12" fill="#2f6f57">Process.start</text>
+
+            <line x1="740" y1="118" x2="810" y2="118" stroke="#2f6f57" stroke-width="2.3" marker-end="url(#arrow)"/>
+            <text x="744" y="104" font-size="12" fill="#2f6f57">LocalSocket: argc + args</text>
+
+            <line x1="810" y1="168" x2="740" y2="168" stroke="#2f6f57" stroke-width="2.3" marker-end="url(#arrow)"/>
+            <text x="744" y="186" font-size="12" fill="#2f6f57">LocalSocket: pid + usingWrapper</text>
+
+            <line x1="990" y1="245" x2="990" y2="325" stroke="#2f6f57" stroke-width="2.3" marker-end="url(#arrow)"/>
+            <text x="1000" y="286" font-size="12" fill="#2f6f57">fork 后进入 app 主进程</text>
+
+            <line x1="810" y1="390" x2="740" y2="390" stroke="#2f6f57" stroke-width="2.3" marker-end="url(#arrow)"/>
+            <text x="744" y="378" font-size="12" fill="#2f6f57">Binder: attachApplication</text>
+
+            <line x1="740" y1="436" x2="810" y2="436" stroke="#2f6f57" stroke-width="2.3" marker-end="url(#arrow)"/>
+            <text x="744" y="456" font-size="12" fill="#2f6f57">Binder: LaunchActivityItem / ResumeActivityItem</text>
+
+            <line x1="420" y1="372" x2="350" y2="170" stroke="#2f6f57" stroke-width="2.0" marker-end="url(#arrow)"/>
+            <text x="255" y="282" font-size="12" fill="#2f6f57">回收等待中的启动请求</text>
+          </svg>
+        </div>
+        <p class="tip">图例重点：只有 `system_server <-> zygote` 是 LocalSocket；`system_server <-> app` 是 Binder。</p>
+      </section>
+
+      <div class="cols">
+        <section class="card">
+          <h2>代码 10：ATMS/AMS 发起进程创建</h2>
+          <div class="code">TaskFragment.java:1435-1442
+1435 } else if (!next.isProcessRunning()) {
+1440   mAtmService.startProcessAsync(next, false, isTop, ...);
+}
+
+ActivityTaskManagerService.java:5249-5252
+5249 final Message m = PooledLambda.obtainMessage(ActivityManagerInternal::startProcess,
+5250         mAmInternal, activity.processName, activity.info.applicationInfo, knownToBeDead,
+5251         isTop, hostingType, activity.intent.getComponent());
+5252 mH.sendMessage(m);
+
+ActivityManagerService.java:17361-17377
+17361 public void startProcess(String processName, ApplicationInfo info, ...)
+17375   ProcessRecord app = startProcessLocked(processName, info, knownToBeDead, ...);</div>
+          <p class="tip">注释：这段只是“调度起进程请求”，真正 fork 在 ProcessList -> Process.start。</p>
+        </section>
+
+        <section class="card">
+          <h2>代码 11：ProcessList 到 Process.start</h2>
+          <div class="code">ProcessList.java:2136-2168
+2136 app.setPendingStart(true);
+2156 final long startSeq = ++mProcStartSeqCounter;
+2166 mService.mProcStartHandler.post(() -> handleProcessStart(..., startSeq));
+
+ProcessList.java:2562-2569
+2562 startResult = Process.start(entryPoint, app.processName, uid, uid, gids, runtimeFlags, ...,
+2569         new String[]{PROC_START_SEQ_IDENT + app.getStartSeq()});</div>
+          <p class="tip">注释：`startSeq` 会随命令行传给 app 进程，attach 时用于防串线校验。</p>
+        </section>
+      </div>
+
+      <div class="cols">
+        <section class="card">
+          <h2>代码 12：Zygote socket 请求/响应协议</h2>
+          <div class="code">Process.java:751-756
+751 return ZYGOTE_PROCESS.start(...);
+
+ZygoteProcess.java:194-195
+194 zygoteSessionSocket.connect(zygoteSocketAddress);
+195 zygoteInputStream = new DataInputStream(zygoteSessionSocket.getInputStream());
+
+ZygoteProcess.java:443,465-473
+443 String msgStr = args.size() + "\\n" + String.join("\\n", args) + "\\n";
+465 zygoteWriter.write(msgStr); zygoteWriter.flush();
+472 result.pid = zygoteInputStream.readInt();
+473 result.usingWrapper = zygoteInputStream.readBoolean();</div>
+          <p class="tip">注释：协议就是 “argc + 按行 args”，返回 `pid + usingWrapper`。</p>
+        </section>
+
+        <section class="card">
+          <h2>代码 13：zygote 侧 accept / process / 回写 pid</h2>
+          <div class="code">ZygoteServer.java:510-512,521
+510 ZygoteConnection newPeer = acceptCommandPeer(abiList);
+512 socketFDs.add(newPeer.getFileDescriptor());
+521 final Runnable command = connection.processCommand(this, multipleForksOK);
+
+ZygoteConnection.java:631-632
+631 mSocketOutStream.writeInt(pid);
+632 mSocketOutStream.writeBoolean(usingWrapper);</div>
+          <p class="tip">注释：这两行正对应上面 `readInt/readBoolean`。</p>
+        </section>
+      </div>
+
+      <div class="cols">
+        <section class="card">
+          <h2>代码 14：fork 后 app attach 回流</h2>
+          <div class="code">ActivityThread.java:8774,8475
+8774 thread.attach(false, startSeq);
+8475 mgr.attachApplication(mAppThread, startSeq);
+
+ActivityManagerService.java:4791-4799,4814,4847
+4791 public final void attachApplication(IApplicationThread thread, long startSeq) {
+4799   attachApplicationLocked(thread, callingPid, callingUid, startSeq);
+}
+4814 if (app != null && app.getStartUid() == uid && app.getStartSeq() == startSeq) { ... }
+4847 didSomething = mAtmInternal.attachApplication(app.getWindowProcessController());</div>
+          <p class="tip">注释：`startSeq` 不匹配会被 AMS 判定异常并清理。</p>
+        </section>
+
+        <section class="card">
+          <h2>代码 15：attachApplication 后真正发起 Activity</h2>
+          <div class="code">RootWindowContainer.java:1864-1885
+1864 final ArrayList&lt;ActivityRecord&gt; activities = mService.mStartingProcessActivities;
+1884 if (mTaskSupervisor.realStartActivityLocked(r, app, canResume, true)) { ... }
+
+ActivityTaskSupervisor.java:938-952,967-971
+938 final LaunchActivityItem launchActivityItem = new LaunchActivityItem(...);
+951 lifecycleItem = new ResumeActivityItem(...);
+967 mService.getLifecycleManager().scheduleTransactionAndLifecycleItems(
+968         proc.getThread(), launchActivityItem, lifecycleItem, true);</div>
+          <p class="tip">注释：到这一步，才重新把“等待进程起来的 Activity”推进到客户端事务执行。</p>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>调试建议（最实用）</h2>
+        <ul>
+          <li>第一优先打印 `EXTRA_START_REASON` / `myReason`，先分清 `systemReady` 还是兜底路径。</li>
+          <li>第二优先看 `TaskFragment.resumeTopActivity` 是走 `attachedToProcess` 还是 `startSpecificActivity`。</li>
+          <li>第三优先看 `realStartActivityLocked` 是否成功 `scheduleTransactionAndLifecycleItems(...)`。</li>
+          <li>客户端侧看 `EXECUTE_TRANSACTION -> handleLaunchActivity -> performLaunchActivity` 是否连续出现。</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</body>
+</html>
