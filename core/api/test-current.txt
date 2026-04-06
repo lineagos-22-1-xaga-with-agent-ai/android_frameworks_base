@@ -3,6 +3,7 @@ package android {
 
   public static final class Manifest.permission {
     field @FlaggedApi("com.android.server.accessibility.motion_event_observing") public static final String ACCESSIBILITY_MOTION_EVENT_OBSERVING = "android.permission.ACCESSIBILITY_MOTION_EVENT_OBSERVING";
+    field public static final String ACCESS_AGENT_SERVICE = "android.permission.ACCESS_AGENT_SERVICE";
     field public static final String ACCESS_NOTIFICATIONS = "android.permission.ACCESS_NOTIFICATIONS";
     field public static final String ACTIVITY_EMBEDDING = "android.permission.ACTIVITY_EMBEDDING";
     field public static final String ADJUST_RUNTIME_PERMISSIONS_POLICY = "android.permission.ADJUST_RUNTIME_PERMISSIONS_POLICY";
@@ -62,10 +63,6 @@ package android {
     field public static final String WRITE_DEVICE_CONFIG = "android.permission.WRITE_DEVICE_CONFIG";
     field @Deprecated public static final String WRITE_MEDIA_STORAGE = "android.permission.WRITE_MEDIA_STORAGE";
     field public static final String WRITE_OBB = "android.permission.WRITE_OBB";
-  }
-
-  public static final class Manifest.permission_group {
-    field public static final String UNDEFINED = "android.permission-group.UNDEFINED";
   }
 
   public static final class R.attr {
