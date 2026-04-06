@@ -352,6 +352,7 @@ package android {
     field public static final String SENSORS = "android.permission-group.SENSORS";
     field public static final String SMS = "android.permission-group.SMS";
     field public static final String STORAGE = "android.permission-group.STORAGE";
+    field public static final String UNDEFINED = "android.permission-group.UNDEFINED";
   }
 
   public final class R {
