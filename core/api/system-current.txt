@@ -2,6 +2,7 @@
 package android {
 
   public static final class Manifest.permission {
+    field public static final String ACCESS_AGENT_SERVICE = "android.permission.ACCESS_AGENT_SERVICE";
     field public static final String ACCESS_AMBIENT_CONTEXT_EVENT = "android.permission.ACCESS_AMBIENT_CONTEXT_EVENT";
     field public static final String ACCESS_AMBIENT_LIGHT_STATS = "android.permission.ACCESS_AMBIENT_LIGHT_STATS";
     field public static final String ACCESS_BROADCAST_RADIO = "android.permission.ACCESS_BROADCAST_RADIO";
@@ -429,10 +430,6 @@ package android {
     field public static final String WRITE_SECURITY_LOG = "android.permission.WRITE_SECURITY_LOG";
     field public static final String WRITE_SMS = "android.permission.WRITE_SMS";
     field @FlaggedApi("android.provider.user_keys") public static final String WRITE_VERIFICATION_STATE_E2EE_CONTACT_KEYS = "android.permission.WRITE_VERIFICATION_STATE_E2EE_CONTACT_KEYS";
-  }
-
-  public static final class Manifest.permission_group {
-    field public static final String UNDEFINED = "android.permission-group.UNDEFINED";
   }
 
   public static final class R.array {

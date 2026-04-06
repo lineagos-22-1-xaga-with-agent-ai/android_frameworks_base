@@ -6424,6 +6424,10 @@ ul.</string>
     <string name="permlab_startForegroundServicesFromBackground">Start foreground services from background</string>
     <!-- Description of start foreground services from background permission [CHAR LIMIT=NONE] -->
     <string name="permdesc_startForegroundServicesFromBackground">Allows a companion app to start foreground services from background.</string>
+    <!-- Title of access agent service permission [CHAR LIMIT=NONE] -->
+    <string name="permlab_accessAgentService">Access AI Agent service</string>
+    <!-- Description of access agent service permission [CHAR LIMIT=NONE] -->
+    <string name="permdesc_accessAgentService">Allows an app to access the AI Agent service for controlling the device.</string>
     <!-- Toast message that is shown when the user unmutes the microphone from the keyboard. [CHAR LIMIT=TOAST] -->
     <string name="mic_access_on_toast">Microphone is available</string>
     <!-- Toast message that is shown when the user mutes the microphone from the keyboard. [CHAR LIMIT=TOAST] -->

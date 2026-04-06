@@ -1,0 +1,79 @@
+检查时间: Sat Apr  4 11:58:15 CST 2026
+设备型号: 22041216UC
+设备品牌: Redmi
+Android版本: 15
+
+========================================
+1. VoiceInteraction 服务状态
+========================================
+VOICE INTERACTION MANAGER (dumpsys voiceinteraction)
+  mEnableService: true
+  mTemporarilyDisabled: false
+  mCurUser: 0
+  mCurUserSupported: true
+  mIsHdsRequired: false
+  1 supported user: [0]
+  Enrolled KeyphraseSoundModels:
+  (No active implementation)
+
+========================================
+2. SoundTrigger 服务 (热词检测)
+========================================
+##Service-Wide logs:
+Events log: Service
+
+##Device state logs:
+DeviceState: ENABLE
+PhoneState: false
+PowerSaveMode: 0
+Events log: Device Event
+  04-03 18:35:35:386 SoundTriggerPowerChange: All enabled
+
+##Active Session dumps:
+
+##Detached Session dumps:
+
+##Enrolled db dump:
+
+  Enrolled GenericSoundModels:
+
+##Sound Model Stats dump:
+
+Model Stats:
+
+========================================
+3. 热词模型文件查找
+========================================
+--- /vendor 分区 ---
+
+--- /system 分区 ---
+
+--- /product 分区 ---
+  /product/etc/permissions/privapp-permissions-hotword.xml
+
+========================================
+4. SoundTrigger 配置
+========================================
+
+========================================
+5. 相关系统属性
+========================================
+
+========================================
+6. 语音相关应用
+========================================
+  package:com.android.hotwordenrollment.okgoogle
+  package:com.android.hotwordenrollment.xgoogle
+
+========================================
+7. 查看 priv-app 中的语音服务
+========================================
+
+========================================
+8. AudioFW 声学模型
+========================================
+
+========================================
+  检查完成
+========================================
+完整日志: /data/local/tmp/hotword_check_20260404_115815.log

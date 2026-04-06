@@ -182,7 +182,31 @@ final class InputMethodInfoUtils {
                             true /* checkCountry */, SUBTYPE_MODE_ANY)
                     .fillAuxiliaryImes(imis, context);
         }
-        return builder.build();
+        ArrayList<InputMethodInfo> result = builder.build();
+        // If LatinIME is in disabledUntilUsedPreinstalledImes, exclude it from default enabled
+        // to allow Chinese IMEs (like Sogou) to be selected as default instead
+        String[] systemImesDisabledUntilUsed = null;
+        try {
+            android.content.res.Resources resources = android.content.res.Resources.getSystem();
+            systemImesDisabledUntilUsed = resources.getStringArray(
+                    com.android.internal.R.array.config_disabledUntilUsedPreinstalledImes);
+        } catch (Exception e) {
+            // Ignore - use default behavior
+        }
+        if (systemImesDisabledUntilUsed != null) {
+            for (String disabledPkg : systemImesDisabledUntilUsed) {
+                if ("com.android.inputmethod.latin".equals(disabledPkg)) {
+                    result.removeIf(imi -> disabledPkg.equals(imi.getPackageName()));
+                    break;
+                }
+            }
+        }
+        // Fallback: if result is empty (no Chinese IME available), restore original behavior
+        // This handles the case where Sogou is not installed
+        if (result.isEmpty()) {
+            return builder.build();
+        }
+        return result;
     }
 
     static ArrayList<InputMethodInfo> getDefaultEnabledImes(

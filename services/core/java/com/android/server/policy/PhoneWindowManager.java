@@ -534,6 +534,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private GlobalActions mGlobalActions;
     private Handler mHandler;
 
+    // AI Agent 音量键语音触发器 - 长按音量下键启动语音助手
+    private com.android.server.ai.VolumeKeyVoiceTrigger mVolumeKeyVoiceTrigger;
+
     // FIXME This state is shared between the input reader and handler thread.
     // Technically it's broken and buggy but it has been like this for many years
     // and we have not yet seen any problems.  Someday we'll rewrite this logic
@@ -2565,6 +2568,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mWakeGestureListener = new MyWakeGestureListener(mContext, mHandler);
         mSettingsObserver = new SettingsObserver(mHandler);
         mSettingsObserver.observe();
+
+        // AI Agent 音量键语音触发器 - 长按音量下键启动语音助手
+        mVolumeKeyVoiceTrigger = new com.android.server.ai.VolumeKeyVoiceTrigger(mContext);
+        mVolumeKeyVoiceTrigger.enable();
 
         // Lineage additions
         mAlarmManager = mContext.getSystemService(AlarmManager.class);
@@ -5735,6 +5742,17 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                                 ? KeyGestureEvent.KEY_GESTURE_TYPE_VOLUME_UP
                                 : KeyGestureEvent.KEY_GESTURE_TYPE_VOLUME_MUTE;
                 notifyKeyGestureCompletedOnActionDown(event, gestureType);
+
+                // AI Agent: 音量键语音触发 - 长按音量下键启动语音助手
+                if (keyCode == KEYCODE_VOLUME_DOWN && mVolumeKeyVoiceTrigger != null) {
+                    if (mVolumeKeyVoiceTrigger.onKeyEvent(event)) {
+                        if (DEBUG_INPUT) {
+                            Slog.d(TAG, "Volume key consumed by voice trigger");
+                        }
+                        result &= ~ACTION_PASS_TO_USER; // 消费事件
+                    }
+                }
+
                 if (down) {
                     sendSystemKeyToStatusBarAsync(event);
 

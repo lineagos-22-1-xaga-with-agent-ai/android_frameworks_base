@@ -12969,6 +12969,42 @@ public final class Settings {
         public static final String AGENT_HOTWORD = "agent_hotword";
 
         /**
+         * ByteDance ASR App Key for voice input.
+         * <p>
+         * Type: String
+         * @hide
+         */
+        @Readable
+        public static final String ASR_APP_KEY = "asr_app_key";
+
+        /**
+         * ByteDance ASR Access Key for voice input.
+         * <p>
+         * Type: String
+         * @hide
+         */
+        @Readable
+        public static final String ASR_ACCESS_KEY = "asr_access_key";
+
+        /**
+         * ByteDance ASR Resource ID for voice input.
+         * <p>
+         * Type: String
+         * @hide
+         */
+        @Readable
+        public static final String ASR_RESOURCE_ID = "asr_resource_id";
+
+        /**
+         * ByteDance ASR App ID for voice input.
+         * <p>
+         * Type: String
+         * @hide
+         */
+        @Readable
+        public static final String ASR_APP_ID = "asr_app_id";
+
+        /**
          * Whether guest user should be removed on exit from guest mode.
          * <p>
          * Type: int

@@ -863,6 +863,15 @@
          @SystemApi
          @TestApi
     -->
+    <!-- Allows third-party apps to access the AI Agent service.
+        <p>Protection level: signature
+        @hide
+    -->
+    <permission android:name="android.permission.ACCESS_AGENT_SERVICE"
+        android:label="@string/permlab_accessAgentService"
+        android:description="@string/permdesc_accessAgentService"
+        android:protectionLevel="signature" />
+
     <permission-group android:name="android.permission-group.UNDEFINED"
         android:priority="100" />
 
@@ -8532,6 +8541,24 @@
                 android:exported="true">
             <intent-filter android:priority="100" >
                 <action android:name="android.nfc.action.SHOW_NFC_RESOLVER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <!-- AI Agent Voice Assist Activity -->
+        <activity android:name="android.app.ai.VoiceAssistActivity"
+                android:exported="true"
+                android:theme="@android:style/Theme.Translucent.NoTitleBar"
+                android:launchMode="singleTop"
+                android:windowSoftInputMode="stateAlwaysHidden"
+                android:excludeFromRecents="true"
+                android:noHistory="true"
+                android:permission="android.permission.CAPTURE_SCREENSHOT">
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
